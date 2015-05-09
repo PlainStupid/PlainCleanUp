@@ -37,14 +37,18 @@ def down_clean_up(dirty_dir):
                 else:
                     # [[season, episode]/False, name of show, absolute path, original name of file]
                     videos.append([info[0], info[1], abs_path, file_name_with_extension])
+                        # check if junk extension
+            # remove if junk file
+            if file_extension.strip().lower() in junk:
+                os.remove(abs_path)
 
     # make a clean directory if it doesnt exist already
     os.chdir('..')
-    if not os.path.exists('clean'):
-        os.makedirs('clean')
+    if not os.path.exists('Clean'):
+        os.makedirs('Clean')
 
     # change current working directory to the new clean directory
-    os.chdir('clean')
+    os.chdir('Clean')
 
     # order shows to the clean folder according to name and season
     for video in videos:
@@ -72,24 +76,17 @@ def down_clean_up(dirty_dir):
     os.chdir('..')
     os.chdir(dirty_dir)
 
-    # delete all junk
-    for subdir, dirs, files in os.walk(os.getcwd()):
-        for file in files:
+    # get number of subdirectories
+    curr = len([x[0] for x in os.walk(os.getcwd())])
 
-            # get absolute path and extension
-            abs_path = os.path.abspath(subdir + '\\' + file)
-            extension = os.path.splitext(file)[1]
-
-            # check if junk extension
-            if extension.strip().lower() in junk:
-                os.remove(abs_path)
-
-    # remove all empty dirs
-    # TODO: Fix this
-    remove_all_empty_dirs(os.getcwd())
-    remove_all_empty_dirs(os.getcwd())
-    remove_all_empty_dirs(os.getcwd())
-
+    while True:
+        # remove all empty dirs
+        remove_all_empty_dirs(os.getcwd())
+        temp = len([x[0] for x in os.walk(os.getcwd())])
+        # if no empty directory was found we stop
+        if curr == temp:
+            break
+        curr = temp
 
 def get_info(file_name):
     """
@@ -129,18 +126,25 @@ def parse_name(file_name):
 
 
 def remove_all_empty_dirs(path_to_curr_dir):
+    """
+    :argument Path to dirty directory
+    :returns Nothing
+    """
 
+    # check if path exists
     if not os.path.isdir(path_to_curr_dir):
         return
 
+    # get all items in the current directory
     items = os.listdir(path_to_curr_dir)
 
+    # if directory is not empty, we call recursively for each item
     if items:
         for item in items:
             abs_path = os.path.join(path_to_curr_dir, item)
             remove_all_empty_dirs(abs_path)
-
-    if not items:
+    # Empty folder removed
+    else:
         os.rmdir(path_to_curr_dir)
 
 
