@@ -8,8 +8,7 @@ def down_clean_up(dirty_dir):
     extensions = ['.avi', '.mp4', '.mkv']
 
     # temp storage for our data
-    shows = []
-    movies = []
+    videos = []
 
     # change current working directory to the directory that is to be sorted
     os.chdir(dirty_dir)
@@ -22,17 +21,13 @@ def down_clean_up(dirty_dir):
             # the absolute path to the current file
             abs_path = os.path.abspath(subdir + '\\' + file_name)
 
-            # only care about video files (TODO: check other useful files like .srt)
+            # only care about video files(TODO: check other useful files like .srt that should be 'attached' to a video)
             if file_name[-4:] in extensions:
 
                 info = get_info(file_name)
 
-                if info[0]:
-                    # [[season, episode], name of show, absolute path, original name of file]
-                    shows.append([info[0], info[1], abs_path, file_name])
-                else:
-                    # [name of movie, absolute path, original name of file]
-                    movies.append([info[1], abs_path, file_name])
+                # [[season, episode]/False, name of show, absolute path, original name of file]
+                videos.append([info[0], info[1], abs_path, file_name])
 
     # make a clean directory if it doesnt exist already
     os.chdir('..')
@@ -43,33 +38,23 @@ def down_clean_up(dirty_dir):
     os.chdir('clean')
 
     # order shows to the clean folder according to name and season
-    for show in shows:
+    for video in videos:
 
-        destination = os.path.abspath(show[1]) + '\\' + 'season' + show[0][0]
+        # check if we have a movie or a show
+        if video[0]:
+            destination = os.path.abspath(video[1]) + '\\' + 'season' + video[0][0]
+        else:
+            destination = os.path.abspath(video[1])
 
         # make destination folder if it doesnt exist already
         if not os.path.exists(destination):
             os.makedirs(destination)
 
-        file_path = destination + '\\' + show[3]
+        file_path = destination + '\\' + video[3]
 
         # move file to destination folder if there is no duplicates
         if not os.path.isfile(file_path):
-            os.rename(show[2], file_path)
-
-    # TODO: combine these two loops more more DRYness
-    # doing the exact same thing with the movies
-    for movie in movies:
-
-        destination = os.path.abspath(movie[0])
-
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-
-        file_path = destination + '\\' + movie[2]
-
-        if not os.path.isfile(file_path):
-            os.rename(movie[1], file_path)
+            os.rename(video[2], file_path)
 
     pass
 
