@@ -9,7 +9,7 @@ Example:
 >>> ls
     CleanUp.py	  downloads
 
->>> python CleanUp.py 'downloads' 'Clean'
+>>> python CleanUp.py downloads Clean
     Done
 
 >>> ls
