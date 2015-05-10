@@ -41,20 +41,17 @@ regexShow = [
         \s*[-]*\s*\[
         (?P<SeasonNumber>\d+) #Season number
         x
-        (?P<EpisodeNumber>\d+)
+        (?P<EpisodeNumber>\d+)#Episode number
         ]
         ''',
 
         '''
         # Matches Show.Name.812.mp4
         ^
-        (?P<ShowName>.+)
-        [\.\-\_\s]
-        [^(\(\d\))|(x\d)]
-        (?P<SeasonNumber>\d{1})
-        #Season number
-        (?P<EpisodeNumber>\d{2})[^(th)]
-        #Episode number
+        (?P<ShowName>.+?)
+        [. _-]+
+        (?P<SeasonNumber>\d{1,2}) #Season number
+        (?P<EpisodeNumber>\d{2}) #Episode number
         ''',
 
         '''
@@ -76,6 +73,7 @@ videoextensions = [ 'avi', 'mp4', 'mkv', 'mpg', '.mp3',
                     'dvr-ms', 'wtv', 'ogv', '3gp', 'xvid'
                     ]
 
+
 subExtensions = ['srt', 'idx' 'sub']
 
 otherExtension = ['nfo']
@@ -84,7 +82,6 @@ photoExtensions = ['jpg', 'jpeg', 'bmp', 'tbn']
 
 junkFiles = ['.torrent', '.dat', '.url', '.txt', '.sfv']
 
-movieFolder = 'Movies'
 showsFolder = 'Shows'
 
 def cleanUp(dirty_dir, clean_dir):
@@ -95,7 +92,6 @@ def cleanUp(dirty_dir, clean_dir):
     cleanDir = os.path.abspath(clean_dir)
 
     theShowDir = os.path.join(cleanDir, showsFolder)
-    theMovieDir = os.path.join(cleanDir, movieFolder)
 
     for subdir, dirs, files in os.walk(dirtyDir):
         # Scan every file in dirtyDir
@@ -106,7 +102,6 @@ def cleanUp(dirty_dir, clean_dir):
             # Absolute path to the old file
             oldFile = os.path.abspath(os.path.join(subdir, file))
 
-            #print(oldFile)
             # Run through every regular expression, from best match to least match
             for y in regexShow:
                 # First we compile the regular expression
@@ -134,11 +129,6 @@ def cleanUp(dirty_dir, clean_dir):
                     mkFullShowDir(theShowDir, showName)
                     moveTvFile(theShowDir, oldFile, showName)
                     break
-
-                # Check if this is a movie
-                if not showName and not isSample and allowedExt(file_extension):
-                    mkFullMovieDir(theMovieDir)
-                    moveMovieFolder(theMovieDir, oldFile)
 
             # Remove the file if it has junk extension
             if file_extension in junkFiles:
@@ -192,28 +182,25 @@ def dottedShowName(file):
     """
     return re.sub('-|_|\s', '.', file.group('ShowName')).strip().title()
 
-def moveMovieFolder(fullDir, file):
 
-    newfile = os.path.basename(file)
-    newFilePath = os.path.join(fullDir, newfile)
+def mkFullMovieDir(fullDir, newfile):
+    movieName = newfile.group('MovieName')
+    movieYear = newfile.group('MovieYear')
 
-    if not os.path.isfile(newFilePath):
-        os.rename(file, newFilePath)
-    else:
-        print('The old file exist in new path:',file)
-        pass
+    pathName = '%s (%s)' % (movieName, movieYear)
 
 
-def mkFullMovieDir(fullDir):
-    if not os.path.isdir(fullDir):
-        if os.path.isfile(fullDir):
-            raise OSError('A file with the same name as the folder already exist: %s' % (fullDir))
+    newPath = os.path.join(fullDir, pathName)
+
+    if not os.path.isdir(newPath):
+        if os.path.isfile(newPath):
+            raise OSError('A file with the same name as the folder already exist: %s' % (newPath))
         else:
             try:
-                os.makedirs(fullDir)
+                os.makedirs(newPath)
                 pass
             except:
-                raise OSError('Something went wrong creating the folders: %s' % (fullDir))
+                raise OSError('Something went wrong creating the folders: %s' % (newPath))
     pass
 
 
