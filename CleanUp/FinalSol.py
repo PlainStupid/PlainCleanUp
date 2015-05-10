@@ -6,57 +6,65 @@ import sys
 # Regexes are in from most used to least used regex for 
 # a given file pattern.
 regexShow = [
-		'''
-		# Matches with Show.S01E10.mp4
-		^ #Beginning of a string
-		(?P<ShowName>.+?) #Show name
-		[\.\_\-\s]+ #If it has dot, underscore or dash
+        '''
+        # Matches with Show.S01E10.mp4
+        ^ #Beginning of a string
+        (?P<ShowName>.+?) #Show name
+        [\.\_\-\s]+ #If it has dot, underscore or dash
 
-		(?:s\s*|season\s*) #Case if starts with s or season
-		(?P<SeasonNumber>\d+) #Show Season number
-		[. _-]*
+        (?:s\s*|season\s*) #Case if starts with s or season
+        (?P<SeasonNumber>\d+) #Show Season number
+        [. _-]*
 
-		(?:e\s*|episode\s*) #Case if starts with e or episode
-		(?P<EpisodeNumber>\d+) #Show episode number
-		[. _-]*
-		''',
+        (?:e\s*|episode\s*) #Case if starts with e or episode
+        (?P<EpisodeNumber>\d+) #Show episode number
+        [. _-]*
+        ''',
 
-		'''
-		# Matches with Show.01x10.mp4
-		^
-		(?P<ShowName>.+) #Show name
-		[\.\_\-\s]+ # char between show name and season number
-		(?P<SeasonNumber>\d+) #Season number
-		x #x between season and episode number
-		(?P<EpisodeNumber>\d+) #Episode number
-		''',
+        '''
+        # Matches Show.Name -12x12.avi
+        ^
+        (?P<ShowName>.+)
+        #Show name
+        [._-]+ # char between show name and season number
+        (?P<SeasonNumber>\d+)
+        #Season number
+        x #x between season and episode number
+        (?P<EpisodeNumber>\d+)
+        #Episode number
+        ''',
 
-		'''
-		# Matches Show - [01x10].mp4
-		^
-		(?P<ShowName>.+)
-		\s*-\s*\[
-		(?P<SeasonNumber>\d+) #Season number
-		x
-		(?P<EpisodeNumber>\d+)
-		]
-		''',
+        '''
+        # Matches Show - [01x10].mp4
+        ^
+        (?P<ShowName>.+)
+        \s*[-]*\s*\[
+        (?P<SeasonNumber>\d+) #Season number
+        x
+        (?P<EpisodeNumber>\d+)
+        ]
+        ''',
 
         '''
         # Matches Show.Name.812.mp4
         ^
-        (?P<ShowName>.+)[\.\_\-\s]+
-        (?P<SeasonNumber>\d{1}) #Season number
-        (?P<EpisodeNumber>\d+) #Episode number
+        (?P<ShowName>.+)
+        [\.\-\_\s]
+        [^(\(\d\))|(x\d)]
+        (?P<SeasonNumber>\d{1})
+        #Season number
+        (?P<EpisodeNumber>\d{2})[^(th)]
+        #Episode number
         ''',
 
-		'''
-		# Matches with Show03e10.mp4
-		# eg. santi-dexterd07e10.hdrip.xvid
-		^(?P<ShowName>.+) #Show name
-		(?P<SeasonNumber>\d.+) #Season number
-		(?:e|episode)(?P<EpisodeNumber>\d+) #Episode number
-		''']
+        '''
+        # Matches with Show03e10.mp4
+        # eg. santi-dexterd07e10.hdrip.xvid
+        ^(?P<ShowName>.{2,}) #Show name
+        (?P<SeasonNumber>\d.+) #Season number
+        (?:e|episode)(?P<EpisodeNumber>\d+) #Episode number
+        '''
+        ]
 
 ignoreRegex = {'sample': '(^|[\W_])(sample\d*)[\W_]',
                'photos': '^AlbumArt.+{.+}'}
@@ -76,12 +84,18 @@ photoExtensions = ['jpg', 'jpeg', 'bmp', 'tbn']
 
 junkFiles = ['.torrent', '.dat', '.url', '.txt', '.sfv']
 
+movieFolder = 'Movies'
+showsFolder = 'Shows'
+
 def cleanUp(dirty_dir, clean_dir):
     # Absolute path to the dirty directory
     dirtyDir = os.path.abspath(dirty_dir)
 
     # Absolute path to the clean directory
     cleanDir = os.path.abspath(clean_dir)
+
+    theShowDir = os.path.join(cleanDir, showsFolder)
+    theMovieDir = os.path.join(cleanDir, movieFolder)
 
     for subdir, dirs, files in os.walk(dirtyDir):
         # Scan every file in dirtyDir
@@ -92,6 +106,7 @@ def cleanUp(dirty_dir, clean_dir):
             # Absolute path to the old file
             oldFile = os.path.abspath(os.path.join(subdir, file))
 
+            #print(oldFile)
             # Run through every regular expression, from best match to least match
             for y in regexShow:
                 # First we compile the regular expression
@@ -110,15 +125,20 @@ def cleanUp(dirty_dir, clean_dir):
                 # Check the shows files based on their extension and if they are not
                 # a sample file
                 if showName and not isSample and allowedExt(file_extension):
-                    mkFullShowDir(cleanDir, showName)
-                    moveFile(cleanDir, oldFile, showName)
+                    mkFullShowDir(theShowDir, showName)
+                    moveTvFile(theShowDir, oldFile, showName)
                     break
 
                 # Check the photos since we don't want all photos, eg. AlbumArt_....
                 if showName and not isSample and not ignPhotos and file_extension[1:] in photoExtensions:
-                    mkFullShowDir(cleanDir, showName)
-                    moveFile(cleanDir, oldFile, showName)
+                    mkFullShowDir(theShowDir, showName)
+                    moveTvFile(theShowDir, oldFile, showName)
                     break
+
+                # Check if this is a movie
+                if not showName and not isSample and allowedExt(file_extension):
+                    mkFullMovieDir(theMovieDir)
+                    moveMovieFolder(theMovieDir, oldFile)
 
             # Remove the file if it has junk extension
             if file_extension in junkFiles:
@@ -172,7 +192,32 @@ def dottedShowName(file):
     """
     return re.sub('-|_|\s', '.', file.group('ShowName')).strip().title()
 
-def moveFile(clean_dir, oldFile, newFile):
+def moveMovieFolder(fullDir, file):
+
+    newfile = os.path.basename(file)
+    newFilePath = os.path.join(fullDir, newfile)
+
+    if not os.path.isfile(newFilePath):
+        os.rename(file, newFilePath)
+    else:
+        print('The old file exist in new path:',file)
+        pass
+
+
+def mkFullMovieDir(fullDir):
+    if not os.path.isdir(fullDir):
+        if os.path.isfile(fullDir):
+            raise OSError('A file with the same name as the folder already exist: %s' % (fullDir))
+        else:
+            try:
+                os.makedirs(fullDir)
+                pass
+            except:
+                raise OSError('Something went wrong creating the folders: %s' % (fullDir))
+    pass
+
+
+def moveTvFile(clean_dir, oldFile, newFile):
     """
     :argument Path to the clean directory, old file including its path, regex file
     :returns Silently returns if exist or has been created, else raise error
@@ -265,5 +310,4 @@ def remove_all_empty_dirs(path_to_curr_dir):
 
 
 if __name__ == "__main__":
-    #cleanUp(sys.argv[1], sys.argv[2])
     cleanUp(sys.argv[1], sys.argv[2])
