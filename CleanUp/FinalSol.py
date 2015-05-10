@@ -1,6 +1,6 @@
 import re
 import os
-
+import shutil
 import sys
 
 # Regexes are in from most used to least used regex for 
@@ -233,7 +233,7 @@ def moveTvFile(clean_dir, oldFile, newFile):
 
     # If it doesn't exist we rename it, otherwise just notify user about it
     if not os.path.isfile(newFilePath):
-        os.rename(oldFile, newFilePath)
+        shutil.move(oldFile, newFilePath)
     else:
         print('The old file exist in new path:',oldFile)
         pass
